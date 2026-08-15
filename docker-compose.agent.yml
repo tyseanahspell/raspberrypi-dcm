@@ -1,0 +1,28 @@
+services:
+  agent:
+    build:
+      context: ./agent
+    image: rpdm-agent:1.0.0
+    restart: unless-stopped
+    environment:
+      MANAGER_URL: ${MANAGER_URL}
+      ENROLLMENT_TOKEN: ${ENROLLMENT_TOKEN:-}
+      AGENT_TOKEN: ${AGENT_TOKEN:-}
+      AGENT_NAME: ${AGENT_NAME:-}
+      HEARTBEAT_SECONDS: ${HEARTBEAT_SECONDS:-5}
+      UPDATE_SECONDS: ${UPDATE_SECONDS:-900}
+      HOST_ROOT: /host
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/host:ro
+      - rpdm-agent:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  rpdm-agent:

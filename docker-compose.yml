@@ -1,0 +1,77 @@
+services:
+  manager:
+    build:
+      context: ./manager
+    image: rpdm-manager:1.0.0
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ENROLLMENT_TOKEN: ${ENROLLMENT_TOKEN}
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/rpdm.db}
+    volumes:
+      - rpdm-data:/data
+    networks:
+      - rpdm
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  web:
+    build:
+      context: ./web
+    image: rpdm-web:1.0.0
+    restart: unless-stopped
+    depends_on:
+      manager:
+        condition: service_healthy
+    ports:
+      - "${RPDM_PORT:-8088}:80"
+    networks:
+      - rpdm
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  agent:
+    build:
+      context: ./agent
+    image: rpdm-agent:1.0.0
+    restart: unless-stopped
+    depends_on:
+      manager:
+        condition: service_healthy
+    environment:
+      MANAGER_URL: ${MANAGER_URL:-http://manager:8080}
+      ENROLLMENT_TOKEN: ${ENROLLMENT_TOKEN}
+      AGENT_NAME: ${AGENT_NAME:-}
+      HEARTBEAT_SECONDS: ${HEARTBEAT_SECONDS:-5}
+      UPDATE_SECONDS: ${UPDATE_SECONDS:-900}
+      HOST_ROOT: /host
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/host:ro
+      - rpdm-agent:/data
+    networks:
+      - rpdm
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  rpdm-data:
+  rpdm-agent:
+
+networks:
+  rpdm:
+    driver: bridge
